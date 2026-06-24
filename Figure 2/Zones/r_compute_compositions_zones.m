@@ -1,0 +1,28 @@
+
+pth = '\\Lucie Dequiedt\Kidney Project\Volumes\';
+samples = {'E17_K1' 'E17_K2' 'Hum_K1' 'Hum_K2' 'Hum_K3_bottom' 'Hum_K3_top' 'Mac_a' 'Mac_b' 'Mac_c' 'Mac_d'};
+
+compositions = zeros(length(samples),16,3);
+%% Load and pre-process
+for j=1:length(samples)
+
+
+    load([pth,samples{j},'.mat'])
+    load([pth,'volzones2\',samples{j},'.mat'],'volzone');
+    vol = volTA;
+    clearvars -except vol volzone pth samples j compositions
+    
+    volzone = double(volzone);
+    vol = double(vol);
+    vol(vol==14) = 0;
+    
+     numzones = 3;
+     numclas = 16;
+     for i=1:numzones
+        zone = vol.*double(volzone==i);
+        compositions(j,:,i) = histcounts(zone,1:17);
+        compositions(j,:,i) = (compositions(j,:,i)/sum(compositions(j,:,i)))*100;
+     end
+
+end
+save('compositions_zones.mat','compositions');

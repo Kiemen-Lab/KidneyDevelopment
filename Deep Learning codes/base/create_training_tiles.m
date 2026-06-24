@@ -1,0 +1,70 @@
+function create_training_tiles(pthDL,numann0,ctlist0,dil,type_emphasize,space)
+load([pthDL,'net.mat'],'sxy','nblack','classNames','ntrain','nvalidate');
+if ~exist('dil','var');dil=0;end
+
+if strcmp(classNames(end),"black")
+    classNames=classNames(1:end-1);
+end
+disp(' ');
+
+
+% check that there are annotations for each tissue type
+disp('Calculating total number of pixels in the training dataset...')
+count_ann=sum(numann0);
+count_ann_u=sum(numann0>0);
+comp_ann=count_ann./max(count_ann)*100;
+
+for b=1:length(count_ann)
+    nm_type=char(strrep(classNames(b),'_',' '));
+    if comp_ann(b)==100
+        fprintf(['  There are %5.0f annotations and %9.0f pixels of ',nm_type,'. This is the most common class. \n'],...
+            count_ann_u(b),count_ann(b))
+    else
+        fprintf(['  There are %5.0f annotations and %9.0f pixels of ',nm_type,', %2.1f%s of the most common class. \n'],...
+            count_ann_u(b),count_ann(b),comp_ann(b),'%')
+    end
+end
+fprintf('  There are %5.0f total annotations and %9.0f total annotated pixels\n',sum(count_ann_u),sum(count_ann))
+
+if ~isempty(find(count_ann==0,1))
+    error('  There are no annotations for one or more class. please add annotations, check nesting, or remove empty classes')
+end
+
+disp(' ');disp('Building training tiles...');tic;
+% make training tiles
+numann=numann0;
+percann=cat(3,zeros(size(numann0))); % keep track of how many times annotations have been used
+ty='training/';obg=[pthDL,ty,'big_tiles/'];tic;
+if length(dir([obg,'HE*jpg']))>=ntrain
+    disp('  already done')
+end
+while length(dir([obg,'HE*jpg']))<ntrain
+    [numann,percann]=combine_annotations_into_tiles(numann0,numann,percann,ctlist0,nblack,pthDL,ty,sxy,dil,10245,0,type_emphasize,space);
+    disp(['  ',num2str(length(dir([obg,'HE*jpg']))),' of ',num2str(ntrain),...
+        ' training images completed in ',num2str(round(toc/60)),' minutes'])
+    perc_count=sum(percann(:,:,1))./sum(numann0>0)*100;    % percent count of annotations used
+    perc_unique=sum(percann(:,:,1)>0)./sum(numann0>0)*100; % percent of unique annotations used
+    for b=1:length(classNames)
+        fprintf(['   used %5.1f%s counts and %5.1f%s unique annotations of ',char(classNames(b)),'\n'],perc_count(b),'%',perc_unique(b),'%');
+    end
+end
+
+disp(' ');disp('Building validation tiles...');tic;
+% make validation tiles
+numann=numann0;
+percann=cat(3,zeros(size(numann0))); % keep track of how many times annotations have been used
+ty='validation/';obg=[pthDL,ty,'big_tiles/'];
+if length(dir([obg,'HE*jpg']))>=nvalidate
+    disp('  already done')
+end
+while length(dir([obg,'HE*jpg']))<nvalidate
+    [numann,percann]=combine_annotations_into_tiles(numann0,numann,percann,ctlist0,nblack,pthDL,ty,sxy,dil,10245,0,type_emphasize,space);
+    disp(['  ',num2str(length(dir([obg,'HE*jpg']))),' of ',num2str(nvalidate),...
+        ' validation images completed in ',num2str(round(toc/60)),' minutes'])
+    perc_count=sum(percann(:,:,1))./sum(numann0>0)*100;    % percent count of annotations used
+    perc_unique=sum(percann(:,:,1)>0)./sum(numann0>0)*100; % percent of unique annotations used
+    for b=1:length(classNames)
+        fprintf(['   used %5.1f%s counts and %5.1f%s unique annotations of ',char(classNames(b)),'\n'],perc_count(b),'%',perc_unique(b),'%');
+    end
+end
+
